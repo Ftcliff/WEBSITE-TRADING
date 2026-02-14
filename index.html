@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SWAMI TRADING GROUP</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    select {
+      padding: 8px;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>SWAMI TRADING GROUP - Admin Dashboard</h1>
+
+<div class="card">
+  <h3>Select Trader</h3>
+  <select id="traderSelect"></select>
+</div>
+
+<div class="card">
+  <h3>Total Profit: $<span id="totalProfit">0</span></h3>
+</div>
+
+<div class="card">
+  <canvas id="profitChart"></canvas>
+</div>
+
+<script>
+
+const sheetID = "1TwFNMDIrT7GXe9BtvioAqrDabo9GIUnxfcoGXEq-tek";
+const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:json`;
+
+fetch(url)
+  .then(res => res.text())
+  .then(data => {
+    const json = JSON.parse(data.substring(47).slice(0, -2));
+    const rows = json.table.rows;
+
+    const traders = rows.map(row => ({
+      date: row.c[0]?.v,
+      traderId: row.c[1]?.v,
+      profit: row.c[4]?.v
+    }));
+
+    const traderSelect = document.getElementById("traderSelect");
+    const uniqueTraders = [...new Set(traders.map(t => t.traderId))];
+
+    traderSelect.innerHTML = `<option value="All">All Traders</option>` +
+      uniqueTraders.map(t => `<option value="${t}">${t}</option>`).join("");
+
+    function updateChart(selected) {
+      let filtered = selected === "All"
+        ? traders
+        : traders.filter(t => t.traderId === selected);
+
+      const total = filtered.reduce((sum, t) => sum + (t.profit || 0), 0);
+      document.getElementById("totalProfit").innerText = total;
+
+      const ctx = document.getElementById("profitChart").getContext("2d");
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: filtered.map(t => t.date),
+          datasets: [{
+            label: "Profit",
+            data: filtered.map(t => t.profit),
+            borderWidth: 2
+          }]
+        }
+      });
+    }
+
+    traderSelect.addEventListener("change", e => {
+      updateChart(e.target.value);
+    });
+
+    updateChart("All");
+  });
+
+</script>
+
+</body>
+</html>
