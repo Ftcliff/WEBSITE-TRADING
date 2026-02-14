@@ -1,211 +1,282 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Trading Firm - Advanced Analytics</title>
+<title>Atlas Capital - Proprietary Trading Firm</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
-  font-family:Inter,sans-serif;
-  background:#0b1220;
-  color:#fff;
-  display:flex;
+  font-family:Inter, sans-serif;
+  background:#070d1a;
+  color:white;
+  overflow-x:hidden;
 }
-.sidebar{
-  width:250px;
-  background:#111827;
+section{
+  padding:80px 10%;
+}
+h1,h2,h3{
+  margin-bottom:20px;
+}
+.hero{
   height:100vh;
-  padding:30px;
-  position:fixed;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  background:linear-gradient(135deg,#0b1220,#111827);
 }
-.sidebar h2{color:#38bdf8;margin-bottom:40px}
-.main{
-  margin-left:260px;
-  padding:40px;
-  width:100%;
+.hero h1{
+  font-size:48px;
+  color:#38bdf8;
 }
-.kpis{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:20px;
-  margin-bottom:30px;
+.hero p{
+  font-size:18px;
+  color:#9ca3af;
+  max-width:600px;
 }
-.card{
+.stats{
+  display:flex;
+  gap:40px;
+  margin-top:40px;
+}
+.stat{
+  background:#111827;
+  padding:20px 30px;
+  border-radius:12px;
+}
+.stat h2{
+  color:#22c55e;
+}
+.analytics{
+  background:#0b1220;
+}
+canvas{
   background:#111827;
   padding:20px;
-  border-radius:14px;
+  border-radius:20px;
+  margin-top:40px;
 }
-.card h4{color:#9ca3af;margin-bottom:5px}
-.card h2{color:#38bdf8}
 .filters{
   margin-bottom:30px;
 }
 select,input{
   padding:10px;
   margin-right:10px;
-  border-radius:6px;
   border:none;
+  border-radius:6px;
+}
+.leaderboard{
+  background:#111827;
+  border-radius:20px;
+  overflow:hidden;
 }
 table{
   width:100%;
   border-collapse:collapse;
-  background:#111827;
-  border-radius:14px;
-  overflow:hidden;
-  margin-top:20px;
 }
 th,td{
-  padding:12px;
+  padding:15px;
   border-bottom:1px solid #1f2937;
 }
-th{background:#1f2937;color:#38bdf8}
-canvas{
-  background:#111827;
-  padding:20px;
-  border-radius:14px;
-  margin-bottom:30px;
+th{
+  background:#1f2937;
+  color:#38bdf8;
 }
-@media(max-width:900px){
-.sidebar{display:none}
-.main{margin-left:0}
+.footer{
+  background:#0b1220;
+  text-align:center;
+  padding:40px;
+  color:#9ca3af;
+}
+.fade-in{
+  opacity:0;
+  transform:translateY(30px);
+  transition:1s;
+}
+.fade-in.visible{
+  opacity:1;
+  transform:translateY(0);
 }
 </style>
 </head>
 
 <body>
 
-<div class="sidebar">
-  <h2>🏢 TRADING FIRM</h2>
-</div>
+<section class="hero">
+  <h1>Atlas Capital</h1>
+  <p>Institutional-grade proprietary trading firm managing strategic capital allocation and trader performance analytics.</p>
 
-<div class="main">
+  <div class="stats">
+    <div class="stat"><h3>Total Capital</h3><h2 id="totalCapital">$0</h2></div>
+    <div class="stat"><h3>Total Profit</h3><h2 id="totalProfit">$0</h2></div>
+    <div class="stat"><h3>Firm ROI</h3><h2 id="firmROI">0%</h2></div>
+  </div>
+</section>
 
-<h1 style="margin-bottom:30px;">Advanced Performance Dashboard</h1>
+<section class="analytics fade-in">
+  <h2>Performance Analytics</h2>
 
-<div class="filters">
-  <select id="traderSelect"></select>
-  <input type="date" id="startDate">
-  <input type="date" id="endDate">
-  <button onclick="applyFilters()">Filter</button>
-</div>
+  <div class="filters">
+    <select id="traderSelect"></select>
+    <input type="date" id="startDate">
+    <input type="date" id="endDate">
+    <button onclick="applyFilters()">Apply</button>
+  </div>
 
-<div class="kpis">
-  <div class="card"><h4>Total Funds</h4><h2 id="funds">$0</h2></div>
-  <div class="card"><h4>Total Profit</h4><h2 id="profit">$0</h2></div>
-  <div class="card"><h4>ROI %</h4><h2 id="roi">0%</h2></div>
-</div>
+  <canvas id="profitChart"></canvas>
+  <canvas id="fundChart"></canvas>
+</section>
 
-<canvas id="lineChart"></canvas>
+<section class="fade-in">
+  <h2>Trader Leaderboard</h2>
+  <div class="leaderboard">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Trader</th>
+          <th>Total Funds</th>
+          <th>Total Profit</th>
+          <th>ROI %</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+  </div>
+</section>
 
-<table>
-<thead>
-<tr>
-<th>Date</th>
-<th>Funds Given</th>
-<th>Profit Made</th>
-</tr>
-</thead>
-<tbody id="tableBody"></tbody>
-</table>
-
-</div>
+<section class="footer">
+  © 2026 Atlas Capital • Institutional Trading Operations
+</section>
 
 <script>
 
-const API = "https://script.google.com/macros/s/AKfycbzsL7At4Mv7l0MxUe-ECE8CQSsOeDNg_kgvnyy86r1kzo0dHNxXYkp8bXITQc866M8iAw/exec";
-let allData = [];
-let chart;
+const API="https://script.google.com/macros/s/AKfycbzsL7At4Mv7l0MxUe-ECE8CQSsOeDNg_kgvnyy86r1kzo0dHNxXYkp8bXITQc866M8iAw/exec";
+let allData=[];
+let profitChart;
+let fundChart;
 
 async function loadData(){
-  const res = await fetch(API);
-  const json = await res.json();
-  allData = json.data.slice(1).map(r=>({
+  const res=await fetch(API);
+  const json=await res.json();
+
+  allData=json.data.slice(1).map(r=>({
     trader:r[0],
     date:r[1],
     funds:parseFloat(r[2]),
     profit:parseFloat(r[3])
-  })).filter(r=>r.trader && !isNaN(r.funds) && !isNaN(r.profit));
+  })).filter(r=>r.trader && !isNaN(r.funds));
 
-  const traders = [...new Set(allData.map(r=>r.trader))];
-  const select = document.getElementById("traderSelect");
-  select.innerHTML = '<option value="All">All Traders</option>';
-  traders.forEach(t=>{
-    select.innerHTML += `<option value="${t}">${t}</option>`;
-  });
-
+  populateTraders();
+  buildFirmOverview();
   applyFilters();
 }
 
-function applyFilters(){
-
-  const trader = document.getElementById("traderSelect").value;
-  const start = document.getElementById("startDate").value;
-  const end = document.getElementById("endDate").value;
-
-  let filtered = allData;
-
-  if(trader !== "All")
-    filtered = filtered.filter(r=>r.trader===trader);
-
-  if(start)
-    filtered = filtered.filter(r=>r.date>=start);
-
-  if(end)
-    filtered = filtered.filter(r=>r.date<=end);
-
-  updateDashboard(filtered);
+function populateTraders(){
+  const traders=[...new Set(allData.map(r=>r.trader))];
+  const select=document.getElementById("traderSelect");
+  select.innerHTML='<option value="All">All Traders</option>';
+  traders.forEach(t=>{
+    select.innerHTML+=`<option value="${t}">${t}</option>`;
+  });
 }
 
-function updateDashboard(data){
+function buildFirmOverview(){
+  let totalFunds=0,totalProfit=0;
+  allData.forEach(r=>{
+    totalFunds+=r.funds;
+    totalProfit+=r.profit;
+  });
+  const roi=(totalProfit/totalFunds)*100;
 
-  if(data.length===0) return;
+  document.getElementById("totalCapital").innerText="$"+totalFunds.toFixed(2);
+  document.getElementById("totalProfit").innerText="$"+totalProfit.toFixed(2);
+  document.getElementById("firmROI").innerText=roi.toFixed(2)+"%";
 
-  let totalFunds=0;
-  let totalProfit=0;
-  let dates=[];
-  let profits=[];
+  buildLeaderboard();
+}
+
+function buildLeaderboard(){
+  let map={};
+  allData.forEach(r=>{
+    if(!map[r.trader]) map[r.trader]={funds:0,profit:0};
+    map[r.trader].funds+=r.funds;
+    map[r.trader].profit+=r.profit;
+  });
+
+  const sorted=Object.entries(map).sort((a,b)=>b[1].profit-a[1].profit);
+
+  const body=document.getElementById("leaderboardBody");
+  body.innerHTML="";
+  sorted.forEach((t,i)=>{
+    const roi=(t[1].profit/t[1].funds)*100;
+    body.innerHTML+=`
+    <tr>
+      <td>${i+1}</td>
+      <td>${t[0]}</td>
+      <td>$${t[1].funds.toFixed(2)}</td>
+      <td>$${t[1].profit.toFixed(2)}</td>
+      <td>${roi.toFixed(2)}%</td>
+    </tr>`;
+  });
+}
+
+function applyFilters(){
+  const trader=document.getElementById("traderSelect").value;
+  const start=document.getElementById("startDate").value;
+  const end=document.getElementById("endDate").value;
+
+  let data=allData;
+
+  if(trader!=="All")
+    data=data.filter(r=>r.trader===trader);
+
+  if(start)
+    data=data.filter(r=>r.date>=start);
+  if(end)
+    data=data.filter(r=>r.date<=end);
+
+  buildCharts(data);
+}
+
+function buildCharts(data){
 
   data.sort((a,b)=>a.date.localeCompare(b.date));
 
-  data.forEach(r=>{
-    totalFunds+=r.funds;
-    totalProfit+=r.profit;
-    dates.push(r.date);
-    profits.push(r.profit);
-  });
+  const dates=data.map(r=>r.date);
+  const profits=data.map(r=>r.profit);
+  const funds=data.map(r=>r.funds);
 
-  const roi = (totalProfit/totalFunds)*100;
+  if(profitChart) profitChart.destroy();
+  if(fundChart) fundChart.destroy();
 
-  document.getElementById("funds").innerText="$"+totalFunds.toFixed(2);
-  document.getElementById("profit").innerText="$"+totalProfit.toFixed(2);
-  document.getElementById("roi").innerText=roi.toFixed(2)+"%";
-
-  const tbody=document.getElementById("tableBody");
-  tbody.innerHTML="";
-  data.forEach(r=>{
-    tbody.innerHTML+=`
-    <tr>
-      <td>${r.date}</td>
-      <td>$${r.funds}</td>
-      <td>$${r.profit}</td>
-    </tr>`;
-  });
-
-  if(chart) chart.destroy();
-
-  chart=new Chart(document.getElementById("lineChart"),{
-    type:'line',
+  profitChart=new Chart(document.getElementById("profitChart"),{
+    type:"line",
     data:{
       labels:dates,
-      datasets:[{
-        label:"Profit Over Time",
-        data:profits
-      }]
+      datasets:[{label:"Profit Trend",data:profits}]
+    }
+  });
+
+  fundChart=new Chart(document.getElementById("fundChart"),{
+    type:"bar",
+    data:{
+      labels:dates,
+      datasets:[{label:"Funds Allocation",data:funds}]
     }
   });
 }
+
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting) e.target.classList.add("visible");
+  });
+});
+
+document.querySelectorAll(".fade-in").forEach(el=>{
+  observer.observe(el);
+});
 
 loadData();
 
