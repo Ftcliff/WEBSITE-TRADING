@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Trading Firm Enterprise</title>
+<title>Trading Firm - Advanced Analytics</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
-  font-family:Inter, sans-serif;
+  font-family:Inter,sans-serif;
   background:#0b1220;
   color:#fff;
   display:flex;
@@ -20,15 +20,7 @@ body{
   padding:30px;
   position:fixed;
 }
-.sidebar h2{
-  color:#38bdf8;
-  margin-bottom:40px;
-}
-.sidebar div{
-  padding:15px;
-  margin-bottom:10px;
-  color:#9ca3af;
-}
+.sidebar h2{color:#38bdf8;margin-bottom:40px}
 .main{
   margin-left:260px;
   padding:40px;
@@ -38,37 +30,46 @@ body{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
   gap:20px;
-  margin-bottom:40px;
+  margin-bottom:30px;
 }
 .card{
   background:#111827;
-  padding:25px;
-  border-radius:16px;
+  padding:20px;
+  border-radius:14px;
 }
-.card h4{color:#9ca3af;margin-bottom:8px}
-.card h2{color:#38bdf8;font-size:28px}
+.card h4{color:#9ca3af;margin-bottom:5px}
+.card h2{color:#38bdf8}
+.filters{
+  margin-bottom:30px;
+}
+select,input{
+  padding:10px;
+  margin-right:10px;
+  border-radius:6px;
+  border:none;
+}
 table{
   width:100%;
   border-collapse:collapse;
   background:#111827;
-  border-radius:16px;
+  border-radius:14px;
   overflow:hidden;
+  margin-top:20px;
 }
 th,td{
-  padding:14px;
+  padding:12px;
   border-bottom:1px solid #1f2937;
 }
 th{background:#1f2937;color:#38bdf8}
-.leader{color:#22c55e;font-weight:bold}
 canvas{
   background:#111827;
   padding:20px;
-  border-radius:16px;
-  margin-bottom:40px;
+  border-radius:14px;
+  margin-bottom:30px;
 }
 @media(max-width:900px){
-  .sidebar{display:none}
-  .main{margin-left:0}
+.sidebar{display:none}
+.main{margin-left:0}
 }
 </style>
 </head>
@@ -77,35 +78,36 @@ canvas{
 
 <div class="sidebar">
   <h2>🏢 TRADING FIRM</h2>
-  <div>Dashboard</div>
-  <div>Analytics</div>
-  <div>Leaderboard</div>
-  <div>Admin</div>
 </div>
 
 <div class="main">
 
-<h1 style="margin-bottom:30px;">Enterprise Dashboard</h1>
+<h1 style="margin-bottom:30px;">Advanced Performance Dashboard</h1>
 
-<div class="kpis">
-  <div class="card"><h4>Total Profit</h4><h2 id="total">$0</h2></div>
-  <div class="card"><h4>Top Trader</h4><h2 id="top">-</h2></div>
-  <div class="card"><h4>Average Trade</h4><h2 id="avg">$0</h2></div>
-  <div class="card"><h4>Growth %</h4><h2 id="growth">0%</h2></div>
+<div class="filters">
+  <select id="traderSelect"></select>
+  <input type="date" id="startDate">
+  <input type="date" id="endDate">
+  <button onclick="applyFilters()">Filter</button>
 </div>
 
-<canvas id="barChart"></canvas>
+<div class="kpis">
+  <div class="card"><h4>Total Funds</h4><h2 id="funds">$0</h2></div>
+  <div class="card"><h4>Total Profit</h4><h2 id="profit">$0</h2></div>
+  <div class="card"><h4>ROI %</h4><h2 id="roi">0%</h2></div>
+</div>
 
-<h3 style="margin-bottom:15px;">Leaderboard</h3>
+<canvas id="lineChart"></canvas>
+
 <table>
 <thead>
 <tr>
-<th>Rank</th>
-<th>Trader</th>
-<th>Total Profit</th>
+<th>Date</th>
+<th>Funds Given</th>
+<th>Profit Made</th>
 </tr>
 </thead>
-<tbody id="leaderboard"></tbody>
+<tbody id="tableBody"></tbody>
 </table>
 
 </div>
@@ -113,76 +115,99 @@ canvas{
 <script>
 
 const API = "https://script.google.com/macros/s/AKfycbzsL7At4Mv7l0MxUe-ECE8CQSsOeDNg_kgvnyy86r1kzo0dHNxXYkp8bXITQc866M8iAw/exec";
-
-let chartInstance;
+let allData = [];
+let chart;
 
 async function loadData(){
+  const res = await fetch(API);
+  const json = await res.json();
+  allData = json.data.slice(1).map(r=>({
+    trader:r[0],
+    date:r[1],
+    funds:parseFloat(r[2]),
+    profit:parseFloat(r[3])
+  })).filter(r=>r.trader && !isNaN(r.funds) && !isNaN(r.profit));
 
-  const response = await fetch(API);
-  const result = await response.json();
-  const rows = result.data.slice(1).filter(r => r[0] && !isNaN(parseFloat(r[1])));
-
-  if(rows.length === 0) return;
-
-  let total = 0;
-  let traderTotals = {};
-  let labels = [];
-  let values = [];
-
-  rows.forEach(r=>{
-    const name = r[0].toString().trim();
-    const amount = parseFloat(r[1]);
-
-    total += amount;
-
-    traderTotals[name] = (traderTotals[name] || 0) + amount;
+  const traders = [...new Set(allData.map(r=>r.trader))];
+  const select = document.getElementById("traderSelect");
+  select.innerHTML = '<option value="All">All Traders</option>';
+  traders.forEach(t=>{
+    select.innerHTML += `<option value="${t}">${t}</option>`;
   });
 
-  const sorted = Object.entries(traderTotals).sort((a,b)=>b[1]-a[1]);
+  applyFilters();
+}
 
-  labels = sorted.map(t=>t[0]);
-  values = sorted.map(t=>t[1]);
+function applyFilters(){
 
-  const avg = total / rows.length;
+  const trader = document.getElementById("traderSelect").value;
+  const start = document.getElementById("startDate").value;
+  const end = document.getElementById("endDate").value;
 
-  let growth = 0;
-  if(values.length > 1 && values[0] !== 0){
-    growth = ((values[0] - values[values.length-1]) / values[values.length-1]) * 100;
-  }
+  let filtered = allData;
 
-  document.getElementById("total").innerText = "$"+total.toFixed(2);
-  document.getElementById("avg").innerText = "$"+avg.toFixed(2);
-  document.getElementById("top").innerText = sorted[0][0];
-  document.getElementById("growth").innerText = growth.toFixed(2)+"%";
+  if(trader !== "All")
+    filtered = filtered.filter(r=>r.trader===trader);
 
-  const tbody = document.getElementById("leaderboard");
+  if(start)
+    filtered = filtered.filter(r=>r.date>=start);
+
+  if(end)
+    filtered = filtered.filter(r=>r.date<=end);
+
+  updateDashboard(filtered);
+}
+
+function updateDashboard(data){
+
+  if(data.length===0) return;
+
+  let totalFunds=0;
+  let totalProfit=0;
+  let dates=[];
+  let profits=[];
+
+  data.sort((a,b)=>a.date.localeCompare(b.date));
+
+  data.forEach(r=>{
+    totalFunds+=r.funds;
+    totalProfit+=r.profit;
+    dates.push(r.date);
+    profits.push(r.profit);
+  });
+
+  const roi = (totalProfit/totalFunds)*100;
+
+  document.getElementById("funds").innerText="$"+totalFunds.toFixed(2);
+  document.getElementById("profit").innerText="$"+totalProfit.toFixed(2);
+  document.getElementById("roi").innerText=roi.toFixed(2)+"%";
+
+  const tbody=document.getElementById("tableBody");
   tbody.innerHTML="";
-  sorted.forEach((t,i)=>{
-    tbody.innerHTML += `
+  data.forEach(r=>{
+    tbody.innerHTML+=`
     <tr>
-      <td>${i+1}</td>
-      <td class="${i==0?'leader':''}">${t[0]}</td>
-      <td>$${t[1].toFixed(2)}</td>
+      <td>${r.date}</td>
+      <td>$${r.funds}</td>
+      <td>$${r.profit}</td>
     </tr>`;
   });
 
-  if(chartInstance) chartInstance.destroy();
+  if(chart) chart.destroy();
 
-  chartInstance = new Chart(document.getElementById("barChart"),{
-    type:'bar',
+  chart=new Chart(document.getElementById("lineChart"),{
+    type:'line',
     data:{
-      labels:labels,
+      labels:dates,
       datasets:[{
-        label:"Trader Profits",
-        data:values
+        label:"Profit Over Time",
+        data:profits
       }]
     }
   });
-
 }
 
 loadData();
-setInterval(loadData,30000);
 
 </script>
 
